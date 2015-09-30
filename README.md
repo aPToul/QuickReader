@@ -1,9 +1,9 @@
 # QuickReader
 I'm really interested in natural language processing and human behaviour.
 
-I saw a lot of news reading during my time on TD's Trading Floor in Toronto and wondered how much information was really being processed. 
+I saw a lot of news being skimmed during my time on TD's Trading Floor in Toronto and wondered how much information was really being processed.
 
-This project is an experiment I made to see what happens when someone only reads jargon (buzzwords used in a specific context) and associates them with the nearest topics. 
+This project is an experiment I made to see what happens when someone only reads jargon (buzzwords used in a specific context) and associates them with the nearest topics.
 
 INPUTS
 
