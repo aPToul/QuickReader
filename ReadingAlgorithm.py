@@ -5,7 +5,7 @@ import tokenize
 import os, os.path
 from math import trunc
 
-# For each article scraped, this code tokenizes the text and find word modifiers near keywords (topics/objects of interest)
+# For each article scraped, this code tokenizes the text and find word modifiers near keywords (subjects/objects of interest)
 # A bag of words approach is used to score each keyword found and a summary is outputted to a text file
 
 
@@ -27,7 +27,7 @@ sequence = []
 # Assumes the average reader is only scanning for familiar buzzwords to quickly gather information
 sent = []
 
-# A list of potential keywords that can be modified, called "keywords"
+# A list of potential subjects/objects that can be modified, called "keywords"
 # Eventually, replace this with a parser which automatically identifies subjects in a sentence
 filtr = []
 
