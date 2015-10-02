@@ -66,7 +66,9 @@ while (k < webPageCount):
 	path, dirs, files = os.walk(folders[k]).next()
 	# Count the number of files in a given subfolder
 	file_count = len(files)
-	articleCount.append(file_count)
+	# Each article has 4 files associated with it:
+	# The header and body as text files and as jsons
+	articleCount.append(file_count/4)
 	k = k + 1
 
 
