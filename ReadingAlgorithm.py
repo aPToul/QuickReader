@@ -5,60 +5,54 @@ import tokenize
 import os, os.path
 from math import trunc
 
-# This code tokenizes a text file and finds word modifiers surrounding words of interest
-# A naive scoring algorithm is implemented for initial testing
+# For each article scraped, tokenizes the text and find word modifiers surrounding keywords (topics/objects of interest)
+# A bag of words approach is used to score each keyword found and a summary is outputted to a text file
 
 
 ### Variable Initialization ###
 
-# Number of webpages and their respective folders/domains
+# Number of webpages scraped (in this case, Bloomberg and Reuters)
 webPageCount = 2
 
-# Name of subfolders for web articles scraped
+# Subfolders containing scraped web articles
 folders = ["r", "b"]
 
-
-# List of stop words for removal (stop word list from http://xpo6.com/list-of-english-stop-words/ )
+# List of stop words for removal (list obtained from http://xpo6.com/list-of-english-stop-words/)
 stp = []
 
-# All non stop-words in a text file and their positions
+# Stores all words (except stop words) in a given text file in the order they appear
 sequence = []
 
-# Assuming the reader is not taking the time to understand a sentence, use a bag-of-words inspired approach
-# Goal: find word modifiers around a word and use that to determine sentiment
-
-# A list of word-modifiers
-# Assumes the average reader is only looking for specific buzzwords when reading
+# A static list of word modifiers which are buzzwords (words used in specific contexts, such as "plummeted")
+# Assumes the average reader is only scanning for familiar buzzwords to quickly gather information
 sent = []
 
-# A list of potential subjects that can be modified, called "keywords"
-# For now, only judge a specific set of words from a topic
-# Evetually, replace with a NLP technique which identifies subjects in a sentence
+# A list of potential keywords that can be modified, called "keywords"
+# Eventually, replace this with a parser which automatically identifies subjects in a sentence
 filtr = []
 
 # Radius of how many words around a keyword a reader is assumed to read (before and after)
-# Eventually should be dynamic based on how strong a word modifier is (i.e. how interested the reader is)
-# Eventually should be paragraph-length depenendent (i.e. interest tapers off after a paragraph)
+# Can be made dynamic based on how important a keyword / modifier pair is (i.e. how interested the reader is)
+# Potential improvements include normalizing this by paragraph length (i.e. interest tapers off after a paragraph)
 steps = 4
 
-# A list of scores assigned to word modifiers for a naive scoring algorithm
+# A list of scores assigned to the buzzwords for scoring purposes
 values = []
 
 
+### Important data structures generated ###
 
-### Data structures generated ###
-
-# Index of keywords and word modifiers, made unique by their position
+# Index containing only keywords and word modifiers, made unique by their position
 index = {}
 
-# An adjacency list of keywords and their adjacent words, based off the above index
-# Can contain a word in multiple positions
+# An adjacency list of the indexed keywords and their adjacent words in the index
 adjlist = {}
 
 # Scores given to each keyword in the adjacency list based off its surrounding word modifiers
-# Can contain a word in multiple positions
 scores = {}
 
+# A dictionary which stores a list of all scores given to a keyword
+superscores = {}
 
 
 ### Count the number of articles scraped ###
@@ -66,18 +60,19 @@ scores = {}
 # Tracks the number of articles filtered for each webpage
 articleCount = []
 
-# Go to each subfolder in the order given
+# Traverse each subfolder in the order given
 k = 0
 while (k < webPageCount):
 	path, dirs, files = os.walk(folders[k]).next()
 	# Count the number of files in a given subfolder
 	file_count = len(files)
-	articleCount.append(file_count/4)
+	articleCount.append(file_count)
 	k = k + 1
 
 
 ### Read in the lists of word types ###
 
+# Folder containing the text files for stop words, keywords, word modifiers and the score 
 wordbank = "readins/"
 
 # Read in stop words
@@ -92,30 +87,28 @@ lst = f.read()
 filtr = lst.split()
 f.close
 
-# Read in modifier words
+# Read in modifier words, which are all buzzwords
 f = open(wordbank + "sentiment.txt", "r")
 lst = f.read()
 sent = lst.split()
 f.close
 
-# Words that are for indexing: keywords and modifier words
-ultra = []
-ultra =  filtr + sent
-
-# Read in values of word modifiers for scoring
+# Read in the sentiment (from 1 to 10) of buzzwords for scoring
+# Note that sentiment values should be in the same order as their respective buzzword in sentiment.txt
 f = open(wordbank + "values.txt", "r")
 lst = f.read()
 values = lst.split()
 f.close
 
-# A place to store all scores computed for a given keyword
-superscores = {}
+
+# Words that are for indexing: keywords and modifier words
+ultra = []
+ultra =  filtr + sent
 
 
 ### Procedure for tokenizing a document ###
 
 # Tokenize and append words to the sequence
-# Information about which word belongs to a given sentence is lost
 def handle_token(type, token, (srow, scol), (erow, ecol), line):
 	if tokenize.tok_name[type] == "NAME":
 		s = repr(token)
@@ -135,7 +128,7 @@ def handle_token_level(type, token, (srow, scol), (erow, ecol), line):
 		sequence.append(s)
 
 def handle_string_token(string):
-	# Hack way for basic data cleaning
+	# Hack method for basic data cleaning
 	fr = open("temp.txt", "w")
 	fr.write(re.sub('[\']', '', string))
 	fr.close
@@ -144,7 +137,7 @@ def handle_string_token(string):
 	tokenize.tokenize(fr.readline, handle_token_level)
 
 
-### Procedure indexing keywords and word modifiers by their position ###
+### Procedure which indexes keywords and word modifiers in order ###
 def build_index(ultra):
 	x = 0
 	for word in sequence:
@@ -156,15 +149,19 @@ def build_index(ultra):
 				index[word].append(x)
 			x += 1
 
-### Procedure which stores adjacent words to all keywords in a dictionary ###
+### Procedure which generates a dictionary that stores words adjacent to keywords in the index ###
 def build_adjacency_list(filtr):
-	# A variable which keeps track of the current bucket in the above word sequence
+	# A variable which keeps track of the current bucket in the index
 	i = 0
+	# For each keyword
 	for word in filtr:
 		if index.has_key(word):
+			# For each case that the keyword is found
 			for ind in index[str(word)]:
+				# Make the dictionary key unique by appending the position of the keyword
 				adjlist[str(word)+" "+str(ind)] = []
 
+				# Define the maximum and minimum for adjacenct buckets
 				start = max(ind-steps, 0)
 				end = min(len(sequence), ind+steps)
 				
@@ -175,12 +172,13 @@ def build_adjacency_list(filtr):
 						ambig = True
 						break				
 				
-				# Having two keywords nearby is not handled well in this bag-of-words approach				
+				# Having two keywords nearby is not handled well in a bag-of-words approach				
 				# As a heuristic, return 1/2 as many words if a keyword is found (to the left)
 				if ambig:
 					start = trunc(max(ind-(steps/2), 0))
 
-				# Append words to the left
+				# Append words to the left to the adjacency list for the given keyword
+				# Words are made unique by position
 				for i in range(start, ind):
 					adjlist[str(word)+" "+str(ind)].append([sequence[i], i])
 
@@ -194,22 +192,25 @@ def build_adjacency_list(filtr):
 				if ambig:
 					end = trunc(min(len(sequence), ind+(steps/2)))
 
-				# Append words to the right
+				# Append words to the right to the adjacency list for the given keyword
+				# Words are made unique by position
 				for i in range(ind + 1, end):
 					adjlist[str(word)+" "+str(ind)].append([sequence[i], i])
 
-### Naive scoring algorithm ###
+### Scoring algorithm ###
 def score(adjlist, sent, values):
 	scores = {}
 	for key in adjlist:
+		# The score and number of word modifiers found are defaulted to 0
 		n = 0
 		score = 0
 		for pair in adjlist[key]:
-			# Adjlist has two values per key: the word and its position
+			# Adjlist has two values per key: an adjacent word and its position
+			# Obtain only the word to see if it is a word modifier
 			adjWord = pair[0]
-			# Check if each adjacent word is a word modifier
+			
 			if adjWord in sent:
-				# Capture the value of the word modifier
+				# Capture the sentiment value of the word modifier
 				value = values[sent.index(adjWord)]
 				# Add it to the score
 				score = score +	int(value)
@@ -227,12 +228,11 @@ def score(adjlist, sent, values):
 # For each website
 k = 0
 while k < webPageCount:
-	q = 0
-	x = 0		
 	folder = folders[k]
-
+	
 	# For each article
 	for z in range(0, articleCount[k]):
+		# Open the scraped article
 		f = open(folder + "/" + str(z) + "_body.txt", "r+")
 		body = f.readline
 
@@ -240,32 +240,33 @@ while k < webPageCount:
 		tokenize.tokenize(f.readline, handle_token)
 		f.close()
 		
-		# Build an index based on this tokenization
+		# Build an "index" based on this tokenization
 		# Only store important words (keywords and modifiers)
 		build_index(ultra)
 
-		# Build an adjacency list for keywords based on this index
+		# Build an adjacency list for keywords in the index
 		build_adjacency_list(filtr)	
 
-		# Score each filter word based on its adjacent word modifiers
+		# Score each keyword based on its adjacent word modifiers
 		scores = {}
 		scores = score(adjlist, sent, values)
 		
-		# Summarize results into a score dictionary
+		# Summarize results in a score dictionary which stores all contexts of a keyword
 		for key in scores:
+			# In the index, a word is made unique by appending its position after a space
+			# Obtain the keyword only to tally together results for that word
 			realKey = re.sub('[\']', '', key)
 			temp = realKey.split(' ')
-			# In the index, a word is considered unique in each place it appears
-			# Obtain the keyword only to tally together results for that word
 			realKey = temp[0]
 			
-			# Append score to the keyword modified
+			# Append the score found in this instance
 			if superscores.has_key(realKey):
 				superscores[realKey].append(scores[key])
 			else:
 				superscores[realKey] = []
 				superscores[realKey].append(scores[key])
 
+		# Clear dictionaries and the sequence list
 		sequence = []
 		adjlist = {}
 		index = {}
@@ -276,7 +277,6 @@ while k < webPageCount:
 ### Write results to a text file ###
 
 f = open("score/scores.txt", "w")
-# Summarize results
 for key in superscores:
 	generator = ""
 	for scr in superscores[key]:
