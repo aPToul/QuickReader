@@ -32,32 +32,32 @@ sent = []
 filtr = []
 
 # Radius of how many words around a keyword a reader is assumed to read (before and after)
-# Can be made dynamic based on how important a keyword / modifier pair is (i.e. how interested the reader is)
-# Potential improvements include normalizing this by paragraph length (i.e. interest tapers off after a paragraph)
-steps = 4
+# Note that this does not include stop words
+steps = 2
+# Areas for improvements:
+# The position of a word in a sentence/paragraph/subsection is not accounted for
+# Radius can be made dynamic based on how important a keyword/modifier pair is to the reader
 
-# A list of scores assigned to the buzzwords for scoring purposes
+# A list of sentiment values assigned to word modifiers
+# These values are used for scoring
 values = []
 
 
 ### Important data structures generated ###
 
-# Index containing only keywords and word modifiers, made unique by their position
+# The "index" containing only keywords and word modifiers, made unique by their position
 index = {}
 
-# An adjacency list of the indexed keywords and their adjacent words in the index
+# An adjacency list of the keywords and their adjacent words (in the index)
 adjlist = {}
 
 # Scores given to each keyword in the adjacency list based off its surrounding word modifiers
 scores = {}
 
-# A dictionary which stores a list of all scores given to a keyword
-superscores = {}
-
 
 ### Count the number of articles scraped ###
 
-# Tracks the number of articles filtered for each webpage
+# The number of articles scraped for each webpage
 articleCount = []
 
 # Traverse each subfolder in the order given
@@ -72,9 +72,9 @@ while (k < webPageCount):
 	k = k + 1
 
 
-### Read in the lists of word types ###
+### Read in lists of words seperated by line ###
 
-# Folder containing the text files for stop words, keywords, word modifiers and the score 
+# Folder containing the text files for stop words, keywords and word modifiers (and their sentiment values)
 wordbank = "readins/"
 
 # Read in stop words
@@ -89,23 +89,18 @@ lst = f.read()
 filtr = lst.split()
 f.close
 
-# Read in modifier words, which are all buzzwords
+# Read in modifier words, which should be buzzwords
 f = open(wordbank + "sentiment.txt", "r")
 lst = f.read()
 sent = lst.split()
 f.close
 
-# Read in the sentiment (from 1 to 10) of buzzwords for scoring
-# Note that sentiment values should be in the same order as their respective buzzword in sentiment.txt
+# Read in the sentiment (valued from 1 to 10) of buzzwords
+# The sentiment values should be in the same order as their respective buzzwords in sentiment.txt
 f = open(wordbank + "values.txt", "r")
 lst = f.read()
 values = lst.split()
 f.close
-
-
-# Words that are for indexing: keywords and modifier words
-ultra = []
-ultra =  filtr + sent
 
 
 ### Procedure for tokenizing a document ###
@@ -140,6 +135,7 @@ def handle_string_token(string):
 
 
 ### Procedure which indexes keywords and word modifiers in order ###
+
 def build_index(ultra):
 	x = 0
 	for word in sequence:
@@ -152,6 +148,7 @@ def build_index(ultra):
 			x += 1
 
 ### Procedure which generates a dictionary that stores words adjacent to keywords in the index ###
+
 def build_adjacency_list(filtr):
 	# A variable which keeps track of the current bucket in the index
 	i = 0
@@ -200,6 +197,7 @@ def build_adjacency_list(filtr):
 					adjlist[str(word)+" "+str(ind)].append([sequence[i], i])
 
 ### Scoring algorithm ###
+
 def score(adjlist, sent, values):
 	scores = {}
 	for key in adjlist:
@@ -226,6 +224,13 @@ def score(adjlist, sent, values):
 
 
 ### Main Procedure ###
+
+# Words that are for indexing: keywords and modifier words
+ultra = []
+ultra =  filtr + sent
+
+# A dictionary which stores a list of scores given to a keyword
+superscores = {}
 
 # For each website
 k = 0
